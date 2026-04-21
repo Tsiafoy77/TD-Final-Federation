@@ -1,0 +1,481 @@
+openapi: 3.0.3
+info:
+  title: API Fédération des Collectivités Agricoles de Madagascar
+  description: API REST de la Fédération Nationale des Collectivités Agricoles de Madagascar.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Serveur de développement local
+
+paths:
+
+  # A - Création d'une nouvelle collectivité
+  /collectivites:
+    post:
+      summary: Créer une nouvelle collectivité agricole
+      description: |
+        Crée une nouvelle collectivité (conditions : min 10 membres dont 5 avec 6 mois d'ancienneté, etc.)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectiviteCreationRequest'
+      responses:
+        '201':
+          description: Collectivité créée avec succès
+        '400':
+          description: Conditions non remplies
+
+  # B - Admission d'un nouveau membre
+  /collectivites/{idCollectivite}/membres:
+    post:
+      summary: Admettre un nouveau membre dans une collectivité
+      parameters:
+        - name: idCollectivite
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MembreAdmissionRequest'
+      responses:
+        '201':
+          description: Membre admis avec succès
+        '400':
+          description: Conditions d'admission non remplies
+
+  # C - Cotisation
+  /cotisations:
+    post:
+      summary: Enregistrer une cotisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CotisationRequest'
+      responses:
+        '201':
+          description: Cotisation enregistrée
+
+  # D - Situation de trésorerie
+  /collectivites/{idCollectivite}/comptes:
+    get:
+      summary: Lister les comptes d'une collectivité
+      parameters:
+        - name: idCollectivite
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des comptes de la collectivité
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Compte'
+
+  /federation/comptes:
+    get:
+      summary: Lister les comptes de la fédération
+      responses:
+        '200':
+          description: Liste des comptes de la fédération
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Compte'
+
+  /comptes/{idCompte}/solde:
+    get:
+      summary: Consulter le solde d'un compte
+      parameters:
+        - name: idCompte
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Solde du compte à la date donnée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Solde'
+
+  # E - Activités d'une collectivité agricole et de la fédération
+  /collectivites/{idCollectivite}/activites:
+    get:
+      summary: Lister les activités d'une collectivité
+      parameters:
+        - name: idCollectivite
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Liste des activités de la collectivité
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activite'
+
+  /federation/activites:
+    get:
+      summary: Lister les activités planifiées par la fédération
+      responses:
+        '200':
+          description: Liste des activités fédérales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activite'
+
+  # F - Assiduité des membres
+  /activites/{idActivite}/presence:
+    post:
+      summary: Enregistrer la présence d'un membre à une activité
+      parameters:
+        - name: idActivite
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresenceRequest'
+      responses:
+        '201':
+          description: Présence enregistrée avec succès
+        '400':
+          description: Erreur dans la requête
+
+  /membres/{idMembre}/assiduite:
+    get:
+      summary: Consulter le taux d'assiduité d'un membre
+      parameters:
+        - name: idMembre
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dateDebut
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dateFin
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Taux d'assiduité du membre sur la période
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assiduite'
+
+  # G - Statistiques d'une collectivité
+  /collectivites/{idCollectivite}/statistiques:
+    get:
+      summary: Obtenir les statistiques détaillées d'une collectivité
+      parameters:
+        - name: idCollectivite
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dateDebut
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dateFin
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Statistiques détaillées de la collectivité
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatistiquesCollectivite'
+
+components:
+  schemas:
+
+    CollectiviteCreationRequest:
+      type: object
+      required: [nom, ville, specialite]
+      properties:
+        nom:
+          type: string
+          example: "Collectivité d'Ankadinandriana"
+        ville:
+          type: string
+          example: "Antananarivo"
+        specialite:
+          type: string
+          example: "Riziculture"
+
+    MembreAdmissionRequest:
+      type: object
+      required: [nom, prenom, dateNaissance, genre, adresse, metier, telephone, email]
+      properties:
+        nom:
+          type: string
+          example: "Rakoto"
+        prenom:
+          type: string
+          example: "Jean"
+        dateNaissance:
+          type: string
+          format: date
+          example: "1995-05-15"
+        genre:
+          type: string
+          enum: [MASCULIN, FEMININ]
+          example: "MASCULIN"
+        adresse:
+          type: string
+          example: "Lot II 45 Bis Antananarivo"
+        metier:
+          type: string
+          example: "Agriculteur"
+        telephone:
+          type: string
+          example: "0341234567"
+        email:
+          type: string
+          example: "jean.rakoto@gmail.com"
+        parrainId:
+          type: integer
+          example: 12
+
+    CotisationRequest:
+      type: object
+      required: [membreId, montant, dateEncaissement, modePaiement]
+      properties:
+        membreId:
+          type: integer
+          example: 45
+        montant:
+          type: number
+          example: 50000
+        dateEncaissement:
+          type: string
+          format: date-time
+          example: "2026-03-30T14:30:00Z"
+        modePaiement:
+          type: string
+          enum: [ESPECES, VIREMENT, MOBILE_MONEY]
+          example: "MOBILE_MONEY"
+
+    # D - Schémas pour la trésorerie
+    Compte:
+      type: object
+      required: [id, type, titulaire, solde]
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [CAISSE, BANCAIRE, MOBILE_MONEY]
+          example: "BANCAIRE"
+        titulaire:
+          type: string
+          example: "Collectivité d'Ankadinandriana"
+        solde:
+          type: number
+          example: 1500000
+        banque:
+          type: string
+          enum: [BRED, MCB, BMOI, BOA, BGFI, AFG, ACCES_BANQUE, BAOBAB, SIPEM]
+          example: "MCB"
+        numeroCompte:
+          type: string
+          example: "12345 67890 12345678901 12"
+        service:
+          type: string
+          enum: [ORANGE_MONEY, MVOLA, AIRTEL_MONEY]
+          example: "MVOLA"
+        numeroTelephone:
+          type: string
+          example: "0341234567"
+
+    Solde:
+      type: object
+      required: [compteId, date, solde]
+      properties:
+        compteId:
+          type: integer
+          example: 1
+        date:
+          type: string
+          format: date
+          example: "2026-03-30"
+        solde:
+          type: number
+          example: 1500000
+
+    # E - Schémas pour les activités
+    Activite:
+      type: object
+      required: [id, nom, type, date, obligatoire]
+      properties:
+        id:
+          type: integer
+          example: 1
+        nom:
+          type: string
+          example: "Assemblée générale mensuelle"
+        type:
+          type: string
+          enum: [ASSEMBLEE_GENERALE, FORMATION_JUNIOR, ACTIVITE_EXCEPTIONNELLE, ACTIVITE_FEDERALE]
+          example: "ASSEMBLEE_GENERALE"
+        date:
+          type: string
+          format: date-time
+          example: "2026-04-14T10:00:00Z"
+        obligatoire:
+          type: boolean
+          example: true
+        description:
+          type: string
+          example: "Assemblée générale du mois d'avril"
+
+    # F - Schémas pour l'assiduité
+    PresenceRequest:
+      type: object
+      required: [membreId, present]
+      properties:
+        membreId:
+          type: integer
+          example: 45
+        present:
+          type: boolean
+          example: true
+        excuse:
+          type: boolean
+          example: false
+        motifAbsence:
+          type: string
+          example: "Maladie"
+
+    Assiduite:
+      type: object
+      required: [membreId, tauxAssiduite, totalActivites, presences]
+      properties:
+        membreId:
+          type: integer
+          example: 45
+        dateDebut:
+          type: string
+          format: date
+          example: "2026-01-01"
+        dateFin:
+          type: string
+          format: date
+          example: "2026-03-31"
+        tauxAssiduite:
+          type: number
+          format: float
+          example: 85.5
+        totalActivites:
+          type: integer
+          example: 10
+        presences:
+          type: integer
+          example: 8
+        absencesExcusées:
+          type: integer
+          example: 1
+        absencesNonExcusées:
+          type: integer
+          example: 1
+
+    # G - Schémas pour les statistiques
+    StatistiquesCollectivite:
+      type: object
+      required: [collectiviteId, periode, tauxAssiduiteGlobal, nombreMembresActifs]
+      properties:
+        collectiviteId:
+          type: integer
+          example: 1
+        dateDebut:
+          type: string
+          format: date
+          example: "2026-01-01"
+        dateFin:
+          type: string
+          format: date
+          example: "2026-03-31"
+        tauxAssiduiteGlobal:
+          type: number
+          format: float
+          example: 78.3
+        nombreMembresActifs:
+          type: integer
+          example: 25
+        detailsMembres:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatistiqueMembre'
+
+    StatistiqueMembre:
+      type: object
+      required: [membreId, nom, prenom, tauxAssiduite, totalEncaisse, montantImpaye]
+      properties:
+        membreId:
+          type: integer
+          example: 45
+        nom:
+          type: string
+          example: "Rakoto"
+        prenom:
+          type: string
+          example: "Jean"
+        tauxAssiduite:
+          type: number
+          format: float
+          example: 90.0
+        totalEncaisse:
+          type: number
+          example: 150000
+        montantImpaye:
+          type: number
+          example: 0
