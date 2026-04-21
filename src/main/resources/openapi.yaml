@@ -28,10 +28,16 @@ paths:
         '400':
           description: Conditions non remplies
 
-  # B - Admission d'un nouveau membre
+  # B - Admission d'un nouveau membre (version mise à jour)
   /collectivites/{idCollectivite}/membres:
     post:
       summary: Admettre un nouveau membre dans une collectivité
+      description: |
+        Nouvelles conditions d'admission :
+        - Être parrainé par au moins 2 membres confirmés
+        - Le nombre de parrains issus de la collectivité visée doit être >= au nombre des autres parrains
+        - Fournir ses informations personnelles avec la relation pour chaque parrain
+        - Payer les frais d'adhésion (50.000 Ar) + l'intégralité des cotisations annuelles obligatoires
       parameters:
         - name: idCollectivite
           in: path
@@ -234,6 +240,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/StatistiquesCollectivite'
 
+  # H - Statistiques de la fédération (NOUVEAU)
+  /federation/statistiques:
+    get:
+      summary: Obtenir le rapport mensuel global de la fédération
+      description: |
+        Rapport contenant pour chaque collectivité :
+        - Taux d'assiduité global
+        - Pourcentage de membres à jour de cotisation
+        - Nombre de nouveaux adhérents
+      parameters:
+        - name: dateDebut
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: dateFin
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Rapport statistique global de la fédération
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatistiquesFederation'
+
 components:
   schemas:
 
@@ -251,9 +287,10 @@ components:
           type: string
           example: "Riziculture"
 
+    # B - MembreAdmissionRequest (VERSION MISE À JOUR)
     MembreAdmissionRequest:
       type: object
-      required: [nom, prenom, dateNaissance, genre, adresse, metier, telephone, email]
+      required: [nom, prenom, dateNaissance, genre, adresse, metier, telephone, email, parrains]
       properties:
         nom:
           type: string
@@ -281,9 +318,48 @@ components:
         email:
           type: string
           example: "jean.rakoto@gmail.com"
-        parrainId:
+        parrains:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/Parrain'
+        paiementInitial:
+          $ref: '#/components/schemas/PaiementInitial'
+
+    Parrain:
+      type: object
+      required: [membreId, collectiviteId, relation]
+      properties:
+        membreId:
           type: integer
           example: 12
+          description: "ID du membre parrain (doit être un membre confirmé)"
+        collectiviteId:
+          type: integer
+          example: 1
+          description: "ID de la collectivité du parrain"
+        relation:
+          type: string
+          enum: [FAMILLE, AMIS, COLLEGUES, AUTRE]
+          example: "AMIS"
+          description: "Nature de la relation entre le candidat et le parrain"
+
+    PaiementInitial:
+      type: object
+      required: [fraisAdhesion, cotisationAnnuelle, modePaiement]
+      properties:
+        fraisAdhesion:
+          type: number
+          example: 50000
+          description: "Frais d'adhésion (50.000 Ar)"
+        cotisationAnnuelle:
+          type: number
+          example: 200000
+          description: "Cotisation annuelle obligatoire de la collectivité"
+        modePaiement:
+          type: string
+          enum: [ESPECES, VIREMENT, MOBILE_MONEY]
+          example: "MOBILE_MONEY"
 
     CotisationRequest:
       type: object
@@ -428,7 +504,7 @@ components:
           type: integer
           example: 1
 
-    # G - Schémas pour les statistiques
+    # G - Schémas pour les statistiques d'une collectivité
     StatistiquesCollectivite:
       type: object
       required: [collectiviteId, periode, tauxAssiduiteGlobal, nombreMembresActifs]
@@ -479,3 +555,46 @@ components:
         montantImpaye:
           type: number
           example: 0
+
+    # H - Schémas pour les statistiques de la fédération (NOUVEAU)
+    StatistiquesFederation:
+      type: object
+      required: [dateDebut, dateFin, rapportParCollectivite]
+      properties:
+        dateDebut:
+          type: string
+          format: date
+          example: "2026-01-01"
+        dateFin:
+          type: string
+          format: date
+          example: "2026-03-31"
+        rapportParCollectivite:
+          type: array
+          items:
+            $ref: '#/components/schemas/RapportCollectivite'
+
+    RapportCollectivite:
+      type: object
+      required: [collectiviteId, nomCollectivite, tauxAssiduiteGlobal, pourcentageMembresAJour, nouveauxAdherents]
+      properties:
+        collectiviteId:
+          type: integer
+          example: 1
+        nomCollectivite:
+          type: string
+          example: "Collectivité d'Ankadinandriana"
+        tauxAssiduiteGlobal:
+          type: number
+          format: float
+          example: 78.5
+          description: "Taux d'assiduité global de la collectivité sur la période"
+        pourcentageMembresAJour:
+          type: number
+          format: float
+          example: 85.0
+          description: "Pourcentage de membres à jour dans leur cotisation"
+        nouveauxAdherents:
+          type: integer
+          example: 5
+          description: "Nombre de nouveaux adhérents sur la période"
