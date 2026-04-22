@@ -17,4 +17,9 @@ public class MemberController {
         this.memberService = memberService;
     }
 
-    @Post
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<MemberDTO> createMembers(@RequestBody List<CreateMemberDTO> requestBody) {
+        return memberService.createMembers(requestBody);
+    }
+}

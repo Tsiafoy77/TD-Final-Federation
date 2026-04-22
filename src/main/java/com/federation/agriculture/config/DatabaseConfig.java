@@ -11,10 +11,9 @@ public class DatabaseConfig {
     private final String password;
 
     public DatabaseConfig() {
-        this.url = System.getenv().getOrDefault("DB_URL",
-                "jdbc:postgresql://localhost:5432/federation_db");
-        this.username = System.getenv().getOrDefault("DB_USERNAME", "postgres");
-        this.password = System.getenv().getOrDefault("DB_PASSWORD", "");
+        this.url = "jdbc:postgresql://localhost:5432/federation_db";
+        this.username = "postgres";
+        this.password = "lukadoncic";
     }
 
     public Connection getConnection() throws SQLException {
