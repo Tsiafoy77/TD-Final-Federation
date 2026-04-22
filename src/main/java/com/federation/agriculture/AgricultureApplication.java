@@ -42,7 +42,7 @@ public class AgricultureApplication {
 
 	@Bean
 	public CollectivityService collectivityService() {
-		return new CollectivityService(collectivityRepository(), memberRepository());
+		return new CollectivityService(collectivityRepository(), memberRepository(), databaseConfig());
 	}
 
 	@Bean

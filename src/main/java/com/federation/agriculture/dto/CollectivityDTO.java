@@ -7,51 +7,39 @@ import java.util.List;
 
 public class CollectivityDTO {
     private String id;
+    private String number;
+    private String name;
     private String location;
     private CollectivityStructureDTO structure;
     private List<MemberDTO> members;
 
     public CollectivityDTO() {}
 
-    public String getId() {
-        return id;
-    }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+    public String getNumber() { return number; }
+    public void setNumber(String number) { this.number = number; }
 
-    public String getLocation() {
-        return location;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setLocation(String location) {
-        this.location = location;
-    }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 
-    public CollectivityStructureDTO getStructure() {
-        return structure;
-    }
+    public CollectivityStructureDTO getStructure() { return structure; }
+    public void setStructure(CollectivityStructureDTO structure) { this.structure = structure; }
 
-    public void setStructure(CollectivityStructureDTO structure) {
-        this.structure = structure;
-    }
-
-    public List<MemberDTO> getMembers() {
-        return members;
-    }
-
-    public void setMembers(List<MemberDTO> members) {
-        this.members = members;
-    }
+    public List<MemberDTO> getMembers() { return members; }
+    public void setMembers(List<MemberDTO> members) { this.members = members; }
 
     public static CollectivityDTO fromCollectivity(Collectivity collectivity) {
-        if (collectivity == null) {
-            return null;
-        }
+        if (collectivity == null) return null;
 
         CollectivityDTO dto = new CollectivityDTO();
         dto.setId(collectivity.getId());
+        dto.setNumber(collectivity.getNumber());
+        dto.setName(collectivity.getName());
         dto.setLocation(collectivity.getLocation());
 
         CollectivityStructureDTO structureDTO = new CollectivityStructureDTO();
@@ -67,6 +55,8 @@ public class CollectivityDTO {
                 memberDTOs.add(MemberDTO.fromMember(member));
             }
             dto.setMembers(memberDTOs);
+        } else {
+            dto.setMembers(new ArrayList<>());
         }
 
         return dto;
