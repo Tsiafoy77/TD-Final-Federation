@@ -10,6 +10,7 @@ public class DatabaseConfig {
     private final String username;
     private final String password;
 
+
     public DatabaseConfig() {
         this.url = "jdbc:postgresql://localhost:5432/federation_db";
         this.username = "postgres";

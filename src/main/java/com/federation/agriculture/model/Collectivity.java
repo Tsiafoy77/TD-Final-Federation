@@ -20,6 +20,8 @@ public class Collectivity {
     private Member treasurer;
     private Member secretary;
     private List<Member> members;
+    private String number;
+
 
     public Collectivity() {}
 
@@ -70,4 +72,7 @@ public class Collectivity {
 
     public List<Member> getMembers() { return members; }
     public void setMembers(List<Member> members) { this.members = members; }
+
+    public String getNumber() { return number; }
+    public void setNumber(String number) { this.number = number; }
 }
