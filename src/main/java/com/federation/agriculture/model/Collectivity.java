@@ -18,7 +18,7 @@ public class Collectivity {
     private Member vicePresident;
     private Member treasurer;
     private Member secretary;
-    private List&lt;Member&gt; members;
+        private List&lt;Member&gt; members;
     public Collectivity() {}
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
