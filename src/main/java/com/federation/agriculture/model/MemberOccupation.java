@@ -1,4 +1,4 @@
 package com.federation.agriculture.model;
-
-public class MemberOccupation {
+public enum MemberOccupation {
+    JUNIOR, SENIOR, SECRETARY, TREASURER, VICE_PRESIDENT, PRESIDENT
 }
