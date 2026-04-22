@@ -16,11 +16,6 @@ public class FinancialAccountRepository {
         this.dbConfig = dbConfig;
     }
 
-    /**
-     * Récupère un compte financier par son ID.
-     * La table financial_account contient tous les types (CASH, MOBILE_BANKING, BANK)
-     * avec les colonnes spécifiques nullable selon le type.
-     */
     public FinancialAccount findById(String id) {
         String sql = "SELECT id, collectivity_id, type, amount, holder_name, " +
                 "mobile_banking_service, mobile_number, bank_name, bank_code, " +
@@ -45,9 +40,7 @@ public class FinancialAccountRepository {
         return null;
     }
 
-    /**
-     * Récupère tous les comptes d'une collectivité.
-     */
+
     public List<FinancialAccount> findByCollectivityId(String collectivityId) {
         String sql = "SELECT id, collectivity_id, type, amount, holder_name, " +
                 "mobile_banking_service, mobile_number, bank_name, bank_code, " +
@@ -74,10 +67,6 @@ public class FinancialAccountRepository {
         return accounts;
     }
 
-    /**
-     * Met à jour le solde d'un compte (après un paiement reçu).
-     * amount est le montant à AJOUTER au solde actuel.
-     */
     public void creditAccount(String accountId, java.math.BigDecimal amount) {
         String sql = "UPDATE financial_account SET amount = amount + ? WHERE id = ?";
 
@@ -97,7 +86,6 @@ public class FinancialAccountRepository {
         }
     }
 
-    // Convertit une ligne SQL → objet FinancialAccount
     private FinancialAccount mapResultSet(ResultSet rs) throws SQLException {
         FinancialAccount account = new FinancialAccount();
         account.setId(rs.getString("id"));
@@ -105,7 +93,6 @@ public class FinancialAccountRepository {
         account.setType(AccountType.valueOf(rs.getString("type")));
         account.setAmount(rs.getBigDecimal("amount"));
 
-        // Champs spécifiques Mobile Banking
         String mobileBankingService = rs.getString("mobile_banking_service");
         if (mobileBankingService != null) {
             account.setMobileBankingService(MobileBankingService.valueOf(mobileBankingService));
@@ -113,7 +100,6 @@ public class FinancialAccountRepository {
         account.setHolderName(rs.getString("holder_name"));
         account.setMobileNumber(rs.getString("mobile_number"));
 
-        // Champs spécifiques Bank
         String bankName = rs.getString("bank_name");
         if (bankName != null) {
             account.setBankName(Bank.valueOf(bankName));

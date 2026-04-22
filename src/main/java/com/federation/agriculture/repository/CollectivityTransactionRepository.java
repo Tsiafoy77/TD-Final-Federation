@@ -85,8 +85,6 @@ public class CollectivityTransactionRepository {
         return transactions;
     }
 
-    // Convertit une ligne SQL → objet CollectivityTransaction (sans les objets liés)
-    // Les objets liés (member, account) sont chargés dans le service
     private CollectivityTransaction mapResultSet(ResultSet rs) throws SQLException {
         CollectivityTransaction tx = new CollectivityTransaction();
         tx.setId(rs.getString("id"));

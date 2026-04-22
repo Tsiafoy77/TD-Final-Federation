@@ -15,9 +15,7 @@ public class MemberPaymentRepository {
         this.dbConfig = dbConfig;
     }
 
-    /**
-     * Sauvegarde un paiement membre en base.
-     */
+
     public MemberPayment save(MemberPayment payment) {
         String sql = "INSERT INTO member_payment " +
                 "(id, member_id, membership_fee_id, amount, payment_mode, account_credited_id, creation_date) " +
