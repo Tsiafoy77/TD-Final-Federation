@@ -5,6 +5,7 @@ import com.federation.agriculture.controller.CollectivityController;
 import com.federation.agriculture.controller.MemberController;
 import com.federation.agriculture.repository.CollectivityRepository;
 import com.federation.agriculture.repository.MemberRepository;
+import com.federation.agriculture.repository.MembershipFeeRepository;
 import com.federation.agriculture.service.CollectivityService;
 import com.federation.agriculture.service.MemberService;
 import org.springframework.boot.SpringApplication;
@@ -36,13 +37,18 @@ public class AgricultureApplication {
 	}
 
 	@Bean
+	public MembershipFeeRepository membershipFeeRepository() {
+		return new MembershipFeeRepository(databaseConfig());
+	}
+
+	@Bean
 	public MemberService memberService() {
 		return new MemberService(memberRepository());
 	}
 
 	@Bean
 	public CollectivityService collectivityService() {
-		return new CollectivityService(collectivityRepository(), memberRepository(), databaseConfig());
+		return new CollectivityService(collectivityRepository(), memberRepository(), databaseConfig(), membershipFeeRepository());
 	}
 
 	@Bean

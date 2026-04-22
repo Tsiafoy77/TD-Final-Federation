@@ -1,14 +1,12 @@
 package com.federation.agriculture.service;
-
+import com.federation.agriculture.exception.BadRequestException;
 import com.federation.agriculture.config.DatabaseConfig;
-import com.federation.agriculture.dto.CreateCollectivityDTO;
-import com.federation.agriculture.dto.CreateCollectivityStructureDTO;
-import com.federation.agriculture.dto.CollectivityDTO;
-import com.federation.agriculture.dto.CollectivityIdentityDTO;
+import com.federation.agriculture.dto.*;
 import com.federation.agriculture.model.Collectivity;
 import com.federation.agriculture.model.Member;
 import com.federation.agriculture.repository.CollectivityRepository;
 import com.federation.agriculture.repository.MemberRepository;
+import com.federation.agriculture.repository.MembershipFeeRepository;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -20,15 +18,18 @@ public class CollectivityService {
     private final CollectivityRepository collectivityRepository;
     private final MemberRepository memberRepository;
     private final DatabaseConfig databaseConfig;
+    private final MembershipFeeRepository membershipFeeRepository;
 
-    // CONSTRUCTEUR AVEC LES 3 PARAMÈTRES
     public CollectivityService(CollectivityRepository collectivityRepository,
                                MemberRepository memberRepository,
-                               DatabaseConfig databaseConfig) {
+                               DatabaseConfig databaseConfig,
+                               MembershipFeeRepository membershipFeeRepository) {
         this.collectivityRepository = collectivityRepository;
         this.memberRepository = memberRepository;
         this.databaseConfig = databaseConfig;
+        this.membershipFeeRepository = membershipFeeRepository;
     }
+
 
     public List<CollectivityDTO> createCollectivities(List<CreateCollectivityDTO> createDTOs) {
         List<CollectivityDTO> result = new ArrayList<>();
@@ -95,15 +96,14 @@ public class CollectivityService {
         return result;
     }
 
-    // METHOD J - Assign unique number and name to a collectivity
+    // FONCTIONNALITÉ J - Attribution d'un numéro et nom unique
+
     public CollectivityDTO assignIdentity(String collectivityId, CollectivityIdentityDTO identity) {
-        // Check if collectivity exists
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found: " + collectivityId);
         }
 
-        // Update number and name directly in database
         String sql = "UPDATE collectivity SET number = ?, name = ? WHERE id = ?";
 
         try (Connection conn = databaseConfig.getConnection();
@@ -123,7 +123,6 @@ public class CollectivityService {
             throw new RuntimeException("Database error: " + e.getMessage());
         }
 
-        // Reload the updated collectivity
         Collectivity updatedCollectivity = collectivityRepository.findById(collectivityId);
 
         if (updatedCollectivity.getMembersIds() != null && !updatedCollectivity.getMembersIds().isEmpty()) {
@@ -144,6 +143,39 @@ public class CollectivityService {
 
         return CollectivityDTO.fromCollectivity(updatedCollectivity);
     }
+
+    // FONCTIONNALITÉ C - Gestion des frais d'adhésion (membership fees)
+
+    // GET /collectivities/{id}/membershipFees
+    public List<MembershipFeeDTO> getMembershipFees(String collectivityId) {
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+        return membershipFeeRepository.findByCollectivityId(collectivityId);
+    }
+
+    // POST /collectivities/{id}/membershipFees
+    public List<MembershipFeeDTO> createMembershipFees(String collectivityId, List<CreateMembershipFeeDTO> fees) {
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+
+        for (CreateMembershipFeeDTO fee : fees) {
+            if (fee.getAmount() <= 0) {
+                throw new BadRequestException("Amount must be greater than 0");
+            }
+            String frequency = fee.getFrequency();
+            if (frequency == null || (!frequency.equals("WEEKLY") && !frequency.equals("MONTHLY") &&
+                    !frequency.equals("ANNUALLY") && !frequency.equals("PUNCTUALLY"))) {
+                throw new BadRequestException("Invalid frequency: " + frequency);
+            }
+        }
+
+        return membershipFeeRepository.saveAll(collectivityId, fees);
+    }
+
 
     private Member findMemberById(String id) {
         Member member = memberRepository.findById(id);
