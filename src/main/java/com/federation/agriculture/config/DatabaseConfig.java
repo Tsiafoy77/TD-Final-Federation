@@ -1,0 +1,23 @@
+package com.federation.agriculture.config;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DatabaseConfig {
+
+    private final String url;
+    private final String username;
+    private final String password;
+
+    public DatabaseConfig() {
+        this.url = System.getenv().getOrDefault("DB_URL",
+                "jdbc:postgresql://localhost:5432/federation_db");
+        this.username = System.getenv().getOrDefault("DB_USERNAME", "postgres");
+        this.password = System.getenv().getOrDefault("DB_PASSWORD", "");
+    }
+
+    public Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(url, username, password);
+    }
+}
