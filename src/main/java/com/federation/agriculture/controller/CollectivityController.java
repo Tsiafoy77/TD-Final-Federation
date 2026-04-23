@@ -56,4 +56,18 @@ public class CollectivityController {
             @RequestParam LocalDate to) {
         return collectivityService.getTransactions(id, from, to);
     }
+
+    // GET /collectivities/{id}
+    @GetMapping("/{id}")
+    public CollectivityDTO getCollectivityById(@PathVariable String id) {
+        return collectivityService.getCollectivityById(id);
+    }
+
+    // GET /collectivities/{id}/financialAccounts
+    @GetMapping("/{id}/financialAccounts")
+    public List<FinancialAccountDTO> getFinancialAccounts(
+            @PathVariable String id,
+            @RequestParam LocalDate at) {
+        return collectivityService.getFinancialAccounts(id, at);
+    }
 }

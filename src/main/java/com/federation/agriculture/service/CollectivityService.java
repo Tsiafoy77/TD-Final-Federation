@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
+import com.federation.agriculture.repository.FinancialAccountRepository;
 
 public class CollectivityService {
 
@@ -21,17 +22,20 @@ public class CollectivityService {
     private final DatabaseConfig databaseConfig;
     private final MembershipFeeRepository membershipFeeRepository;
     private final CollectivityTransactionRepository collectivityTransactionRepository;
+    private final FinancialAccountRepository financialAccountRepository;
 
     public CollectivityService(CollectivityRepository collectivityRepository,
                                MemberRepository memberRepository,
                                DatabaseConfig databaseConfig,
                                MembershipFeeRepository membershipFeeRepository,
-                               CollectivityTransactionRepository collectivityTransactionRepository) {
+                               CollectivityTransactionRepository collectivityTransactionRepository,
+                               FinancialAccountRepository financialAccountRepository) {
         this.collectivityRepository = collectivityRepository;
         this.memberRepository = memberRepository;
         this.databaseConfig = databaseConfig;
         this.membershipFeeRepository = membershipFeeRepository;
         this.collectivityTransactionRepository = collectivityTransactionRepository;
+        this.financialAccountRepository = financialAccountRepository;
     }
 
     // FONCTIONNALITÉ A - Création d'une collectivité
@@ -205,5 +209,48 @@ public class CollectivityService {
             throw new RuntimeException("Member not found: " + id);
         }
         return member;
+    }
+
+    // Dans CollectivityService.java, ajoute cette méthode
+
+    public List<FinancialAccountDTO> getFinancialAccounts(String collectivityId, LocalDate at) {
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+
+        if (at == null) {
+            throw new RuntimeException("Query parameter 'at' is mandatory");
+        }
+
+        return financialAccountRepository.findByCollectivityIdAndDate(collectivityId, at);
+    }
+
+    public CollectivityDTO getCollectivityById(String collectivityId) {
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+
+        // Charger les membres complets
+        if (collectivity.getMembersIds() != null && !collectivity.getMembersIds().isEmpty()) {
+            collectivity.setMembers(memberRepository.findAllByIds(collectivity.getMembersIds()));
+        }
+
+        // Charger les postes spécifiques
+        if (collectivity.getPresidentId() != null) {
+            collectivity.setPresident(memberRepository.findById(collectivity.getPresidentId()));
+        }
+        if (collectivity.getVicePresidentId() != null) {
+            collectivity.setVicePresident(memberRepository.findById(collectivity.getVicePresidentId()));
+        }
+        if (collectivity.getTreasurerId() != null) {
+            collectivity.setTreasurer(memberRepository.findById(collectivity.getTreasurerId()));
+        }
+        if (collectivity.getSecretaryId() != null) {
+            collectivity.setSecretary(memberRepository.findById(collectivity.getSecretaryId()));
+        }
+
+        return CollectivityDTO.fromCollectivity(collectivity);
     }
 }

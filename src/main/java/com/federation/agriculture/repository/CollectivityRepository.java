@@ -65,7 +65,23 @@ public class CollectivityRepository {
 
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToCollectivity(rs);
+                    Collectivity collectivity = new Collectivity();
+                    collectivity.setId(rs.getString("id"));
+                    collectivity.setName(rs.getString("name"));
+                    collectivity.setNumber(rs.getString("number"));
+                    collectivity.setLocation(rs.getString("location"));
+                    collectivity.setAgriculturalSpecialty(rs.getString("agricultural_specialty"));
+                    collectivity.setFederationApproval(rs.getBoolean("federation_approval"));
+                    collectivity.setPresidentId(rs.getString("president_id"));
+                    collectivity.setVicePresidentId(rs.getString("vice_president_id"));
+                    collectivity.setTreasurerId(rs.getString("treasurer_id"));
+                    collectivity.setSecretaryId(rs.getString("secretary_id"));
+                    collectivity.setCreatedAt(rs.getTimestamp("created_at"));
+
+                    // Charger les membres
+                    collectivity.setMembersIds(findMemberIdsByCollectivityId(id));
+
+                    return collectivity;
                 }
             }
         } catch (SQLException e) {
