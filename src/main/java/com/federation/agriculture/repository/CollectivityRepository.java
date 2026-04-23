@@ -157,7 +157,6 @@ public class CollectivityRepository {
         return memberIds;
     }
 
-    // UNE SEULE FOIS - pas de doublon !
     private Collectivity mapResultSetToCollectivity(ResultSet rs) throws SQLException {
         Collectivity collectivity = new Collectivity();
         collectivity.setId(rs.getString("id"));

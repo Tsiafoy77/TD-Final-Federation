@@ -1,10 +1,11 @@
 package com.federation.agriculture.service;
-import com.federation.agriculture.exception.BadRequestException;
+
 import com.federation.agriculture.config.DatabaseConfig;
 import com.federation.agriculture.dto.*;
 import com.federation.agriculture.model.Collectivity;
 import com.federation.agriculture.model.Member;
 import com.federation.agriculture.repository.CollectivityRepository;
+import com.federation.agriculture.repository.CollectivityTransactionRepository;
 import com.federation.agriculture.repository.MemberRepository;
 import com.federation.agriculture.repository.MembershipFeeRepository;
 import java.sql.Connection;
@@ -19,18 +20,21 @@ public class CollectivityService {
     private final MemberRepository memberRepository;
     private final DatabaseConfig databaseConfig;
     private final MembershipFeeRepository membershipFeeRepository;
+    private final CollectivityTransactionRepository collectivityTransactionRepository;
 
     public CollectivityService(CollectivityRepository collectivityRepository,
                                MemberRepository memberRepository,
                                DatabaseConfig databaseConfig,
-                               MembershipFeeRepository membershipFeeRepository) {
+                               MembershipFeeRepository membershipFeeRepository,
+                               CollectivityTransactionRepository collectivityTransactionRepository) {
         this.collectivityRepository = collectivityRepository;
         this.memberRepository = memberRepository;
         this.databaseConfig = databaseConfig;
         this.membershipFeeRepository = membershipFeeRepository;
+        this.collectivityTransactionRepository = collectivityTransactionRepository;
     }
 
-
+    // FONCTIONNALITÉ A - Création d'une collectivité
     public List<CollectivityDTO> createCollectivities(List<CreateCollectivityDTO> createDTOs) {
         List<CollectivityDTO> result = new ArrayList<>();
 
@@ -96,6 +100,7 @@ public class CollectivityService {
         return result;
     }
 
+
     // FONCTIONNALITÉ J - Attribution d'un numéro et nom unique
 
     public CollectivityDTO assignIdentity(String collectivityId, CollectivityIdentityDTO identity) {
@@ -144,9 +149,9 @@ public class CollectivityService {
         return CollectivityDTO.fromCollectivity(updatedCollectivity);
     }
 
-    // FONCTIONNALITÉ C - Gestion des frais d'adhésion (membership fees)
 
-    // GET /collectivities/{id}/membershipFees
+    // FONCTIONNALITÉ C - Gestion des frais d'adhésion
+
     public List<MembershipFeeDTO> getMembershipFees(String collectivityId) {
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
@@ -155,7 +160,6 @@ public class CollectivityService {
         return membershipFeeRepository.findByCollectivityId(collectivityId);
     }
 
-    // POST /collectivities/{id}/membershipFees
     public List<MembershipFeeDTO> createMembershipFees(String collectivityId, List<CreateMembershipFeeDTO> fees) {
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
@@ -164,16 +168,34 @@ public class CollectivityService {
 
         for (CreateMembershipFeeDTO fee : fees) {
             if (fee.getAmount() <= 0) {
-                throw new BadRequestException("Amount must be greater than 0");
+                throw new RuntimeException("Amount must be greater than 0");
             }
             String frequency = fee.getFrequency();
             if (frequency == null || (!frequency.equals("WEEKLY") && !frequency.equals("MONTHLY") &&
                     !frequency.equals("ANNUALLY") && !frequency.equals("PUNCTUALLY"))) {
-                throw new BadRequestException("Invalid frequency: " + frequency);
+                throw new RuntimeException("Invalid frequency: " + frequency);
             }
         }
 
         return membershipFeeRepository.saveAll(collectivityId, fees);
+    }
+
+    // FONCTIONNALITÉ D - Transactions des collectivités
+    public List<CollectivityTransactionDTO> getTransactions(String collectivityId, LocalDate from, LocalDate to) {
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+
+        if (from == null || to == null) {
+            throw new RuntimeException("Query parameters 'from' and 'to' are mandatory");
+        }
+
+        if (from.isAfter(to)) {
+            throw new RuntimeException("'from' date must be before or equal to 'to' date");
+        }
+
+        return collectivityTransactionRepository.findByCollectivityIdAndDateRange(collectivityId, from, to);
     }
 
 

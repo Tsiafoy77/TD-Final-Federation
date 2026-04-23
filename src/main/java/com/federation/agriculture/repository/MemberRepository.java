@@ -59,7 +59,7 @@ public class MemberRepository {
     public Member findById(String id) {
         String sql = "SELECT id, first_name, last_name, birth_date, gender, " +
                 "address, profession, phone_number, email, occupation, " +
-                "registration_fee_paid, membership_dues_paid, membership_date " +
+                "collectivity_id, registration_fee_paid, membership_dues_paid, membership_date " +
                 "FROM member WHERE id = ?";
 
         try (Connection conn = dbConfig.getConnection();
@@ -83,6 +83,10 @@ public class MemberRepository {
                     member.setPhoneNumber(rs.getInt("phone_number"));
                     member.setEmail(rs.getString("email"));
                     member.setOccupation(MemberOccupation.valueOf(rs.getString("occupation")));
+
+                    // AJOUTER CETTE LIGNE
+                    member.setCollectivityId(rs.getString("collectivity_id"));
+
                     member.setRegistrationFeePaid(rs.getBoolean("registration_fee_paid"));
                     member.setMembershipDuesPaid(rs.getBoolean("membership_dues_paid"));
                     java.sql.Date membershipDateSql = rs.getDate("membership_date");
@@ -105,7 +109,7 @@ public class MemberRepository {
 
         String sql = "SELECT id, first_name, last_name, birth_date, gender, " +
                 "address, profession, phone_number, email, occupation, " +
-                "registration_fee_paid, membership_dues_paid, membership_date " +
+                "collectivity_id, registration_fee_paid, membership_dues_paid, membership_date " +
                 "FROM member WHERE id = ANY(?)";
 
         List<Member> members = new ArrayList<>();
@@ -132,6 +136,10 @@ public class MemberRepository {
                     member.setPhoneNumber(rs.getInt("phone_number"));
                     member.setEmail(rs.getString("email"));
                     member.setOccupation(MemberOccupation.valueOf(rs.getString("occupation")));
+
+                    // AJOUTER CETTE LIGNE
+                    member.setCollectivityId(rs.getString("collectivity_id"));
+
                     member.setRegistrationFeePaid(rs.getBoolean("registration_fee_paid"));
                     member.setMembershipDuesPaid(rs.getBoolean("membership_dues_paid"));
                     java.sql.Date membershipDateSql = rs.getDate("membership_date");

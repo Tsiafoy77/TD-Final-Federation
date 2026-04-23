@@ -41,6 +41,31 @@ public class MembershipFeeRepository {
         return fees;
     }
 
+    public MembershipFeeDTO findById(String id) {
+        String sql = "SELECT id, eligible_from, frequency, amount, label, status FROM membership_fee WHERE id = ?";
+
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, id);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                MembershipFeeDTO fee = new MembershipFeeDTO();
+                fee.setId(rs.getString("id"));
+                fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                fee.setFrequency(rs.getString("frequency"));
+                fee.setAmount(rs.getDouble("amount"));
+                fee.setLabel(rs.getString("label"));
+                fee.setStatus(rs.getString("status"));
+                return fee;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public List<MembershipFeeDTO> saveAll(String collectivityId, List<CreateMembershipFeeDTO> feeDTOs) {
         List<MembershipFeeDTO> result = new ArrayList<>();
         String sql = "INSERT INTO membership_fee (id, collectivity_id, eligible_from, frequency, amount, label) VALUES (?, ?, ?, ?, ?, ?)";
