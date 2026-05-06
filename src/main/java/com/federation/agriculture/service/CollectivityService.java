@@ -2,18 +2,29 @@ package com.federation.agriculture.service;
 
 import com.federation.agriculture.config.DatabaseConfig;
 import com.federation.agriculture.dto.*;
+import com.federation.agriculture.exception.BadRequestException;
 import com.federation.agriculture.model.Collectivity;
 import com.federation.agriculture.model.Member;
 import com.federation.agriculture.repository.CollectivityRepository;
 import com.federation.agriculture.repository.CollectivityTransactionRepository;
 import com.federation.agriculture.repository.MemberRepository;
 import com.federation.agriculture.repository.MembershipFeeRepository;
+import com.federation.agriculture.repository.MemberPaymentRepository;
+import com.federation.agriculture.dto.MembershipFeeDTO;
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 import com.federation.agriculture.repository.FinancialAccountRepository;
+import com.federation.agriculture.dto.CollectivityLocalStatisticsDTO;
+import com.federation.agriculture.dto.CollectivityOverallStatisticsDTO;
+import com.federation.agriculture.dto.CollectivityInformationDTO;
+import com.federation.agriculture.dto.MemberDescriptionDTO;
 
 public class CollectivityService {
 
@@ -23,19 +34,22 @@ public class CollectivityService {
     private final MembershipFeeRepository membershipFeeRepository;
     private final CollectivityTransactionRepository collectivityTransactionRepository;
     private final FinancialAccountRepository financialAccountRepository;
+    private final MemberPaymentRepository memberPaymentRepository;
 
     public CollectivityService(CollectivityRepository collectivityRepository,
                                MemberRepository memberRepository,
                                DatabaseConfig databaseConfig,
                                MembershipFeeRepository membershipFeeRepository,
                                CollectivityTransactionRepository collectivityTransactionRepository,
-                               FinancialAccountRepository financialAccountRepository) {
+                               FinancialAccountRepository financialAccountRepository,
+                               MemberPaymentRepository memberPaymentRepository) {
         this.collectivityRepository = collectivityRepository;
         this.memberRepository = memberRepository;
         this.databaseConfig = databaseConfig;
         this.membershipFeeRepository = membershipFeeRepository;
         this.collectivityTransactionRepository = collectivityTransactionRepository;
         this.financialAccountRepository = financialAccountRepository;
+        this.memberPaymentRepository = memberPaymentRepository;
     }
 
     // FONCTIONNALITÉ A - Création d'une collectivité
@@ -104,9 +118,7 @@ public class CollectivityService {
         return result;
     }
 
-
     // FONCTIONNALITÉ J - Attribution d'un numéro et nom unique
-
     public CollectivityDTO assignIdentity(String collectivityId, CollectivityIdentityDTO identity) {
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
@@ -153,9 +165,7 @@ public class CollectivityService {
         return CollectivityDTO.fromCollectivity(updatedCollectivity);
     }
 
-
     // FONCTIONNALITÉ C - Gestion des frais d'adhésion
-
     public List<MembershipFeeDTO> getMembershipFees(String collectivityId) {
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
@@ -172,12 +182,13 @@ public class CollectivityService {
 
         for (CreateMembershipFeeDTO fee : fees) {
             if (fee.getAmount() <= 0) {
-                throw new RuntimeException("Amount must be greater than 0");
+                throw new BadRequestException("Amount must be greater than 0");
             }
+
             String frequency = fee.getFrequency();
             if (frequency == null || (!frequency.equals("WEEKLY") && !frequency.equals("MONTHLY") &&
                     !frequency.equals("ANNUALLY") && !frequency.equals("PUNCTUALLY"))) {
-                throw new RuntimeException("Invalid frequency: " + frequency);
+                throw new BadRequestException("Invalid frequency: " + frequency);
             }
         }
 
@@ -186,22 +197,21 @@ public class CollectivityService {
 
     // FONCTIONNALITÉ D - Transactions des collectivités
     public List<CollectivityTransactionDTO> getTransactions(String collectivityId, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new BadRequestException("Query parameters 'from' and 'to' are mandatory");
+        }
+
+        if (from.isAfter(to)) {
+            throw new BadRequestException("'from' date must be before or equal to 'to' date");
+        }
+
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found: " + collectivityId);
         }
 
-        if (from == null || to == null) {
-            throw new RuntimeException("Query parameters 'from' and 'to' are mandatory");
-        }
-
-        if (from.isAfter(to)) {
-            throw new RuntimeException("'from' date must be before or equal to 'to' date");
-        }
-
         return collectivityTransactionRepository.findByCollectivityIdAndDateRange(collectivityId, from, to);
     }
-
 
     private Member findMemberById(String id) {
         Member member = memberRepository.findById(id);
@@ -211,16 +221,14 @@ public class CollectivityService {
         return member;
     }
 
-    // Dans CollectivityService.java, ajoute cette méthode
-
     public List<FinancialAccountDTO> getFinancialAccounts(String collectivityId, LocalDate at) {
+        if (at == null) {
+            throw new BadRequestException("Query parameter 'at' is mandatory");
+        }
+
         Collectivity collectivity = collectivityRepository.findById(collectivityId);
         if (collectivity == null) {
             throw new RuntimeException("Collectivity not found: " + collectivityId);
-        }
-
-        if (at == null) {
-            throw new RuntimeException("Query parameter 'at' is mandatory");
         }
 
         return financialAccountRepository.findByCollectivityIdAndDate(collectivityId, at);
@@ -232,12 +240,10 @@ public class CollectivityService {
             throw new RuntimeException("Collectivity not found: " + collectivityId);
         }
 
-        // Charger les membres complets
         if (collectivity.getMembersIds() != null && !collectivity.getMembersIds().isEmpty()) {
             collectivity.setMembers(memberRepository.findAllByIds(collectivity.getMembersIds()));
         }
 
-        // Charger les postes spécifiques
         if (collectivity.getPresidentId() != null) {
             collectivity.setPresident(memberRepository.findById(collectivity.getPresidentId()));
         }
@@ -252,5 +258,119 @@ public class CollectivityService {
         }
 
         return CollectivityDTO.fromCollectivity(collectivity);
+    }
+
+    public List<CollectivityDTO> getAllCollectivities() {
+        List<Collectivity> collectivities = collectivityRepository.findAll();
+        List<CollectivityDTO> result = new ArrayList<>();
+
+        for (Collectivity collectivity : collectivities) {
+            if (collectivity.getMembersIds() != null && !collectivity.getMembersIds().isEmpty()) {
+                collectivity.setMembers(memberRepository.findAllByIds(collectivity.getMembersIds()));
+            }
+            result.add(CollectivityDTO.fromCollectivity(collectivity));
+        }
+        return result;
+    }
+
+    public List<CollectivityLocalStatisticsDTO> getMemberStatistics(String collectivityId, LocalDate from, LocalDate to) {
+        // Vérification de l'existence de la collectivité
+        Collectivity collectivity = collectivityRepository.findById(collectivityId);
+        if (collectivity == null) {
+            throw new RuntimeException("Collectivity not found: " + collectivityId);
+        }
+        // Vérification des paramètres
+        if (from == null || to == null) {
+            throw new BadRequestException("Query parameters 'from' and 'to' are mandatory");
+        }
+        if (from.isAfter(to)) {
+            throw new BadRequestException("'from' date must be before or equal to 'to' date");
+        }
+
+        List<Member> members = collectivityRepository.findMembersByCollectivityId(collectivityId);
+        List<MembershipFeeDTO> activeFees = collectivityRepository.findActiveMembershipFeesByCollectivityId(collectivityId);
+        List<CollectivityLocalStatisticsDTO> result = new ArrayList<>();
+
+        for (Member member : members) {
+            double totalPaid = memberPaymentRepository.getTotalPaidByMemberAndPeriod(member.getId(), from, to);
+            double totalUnpaid = 0;
+            for (MembershipFeeDTO fee : activeFees) {
+                if (!fee.getEligibleFrom().isAfter(to)) {
+                    double paidForFee = getPaidForMembershipFee(member.getId(), fee.getId(), from, to);
+                    if (paidForFee < fee.getAmount()) {
+                        totalUnpaid += (fee.getAmount() - paidForFee);
+                    }
+                }
+            }
+            MemberDescriptionDTO memberDesc = new MemberDescriptionDTO(
+                    member.getId(), member.getFirstName(), member.getLastName(),
+                    member.getEmail(), member.getOccupation().name()
+            );
+            result.add(new CollectivityLocalStatisticsDTO(memberDesc, totalPaid, totalUnpaid));
+        }
+        return result;
+    }
+
+    public List<CollectivityOverallStatisticsDTO> getAllCollectivitiesStatistics(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new BadRequestException("Query parameters 'from' and 'to' are mandatory");
+        }
+        if (from.isAfter(to)) {
+            throw new BadRequestException("'from' date must be before or equal to 'to' date");
+        }
+
+        List<Collectivity> collectivities = collectivityRepository.findAll();
+        List<CollectivityOverallStatisticsDTO> result = new ArrayList<>();
+
+        for (Collectivity collectivity : collectivities) {
+            List<Member> members = collectivityRepository.findMembersByCollectivityId(collectivity.getId());
+            List<MembershipFeeDTO> activeFees = collectivityRepository.findActiveMembershipFeesByCollectivityId(collectivity.getId());
+
+            int membersUpToDate = 0;
+            int newMembersCount = 0;
+
+            for (Member member : members) {
+                boolean isUpToDate = true;
+                for (MembershipFeeDTO fee : activeFees) {
+                    double paid = getPaidForMembershipFee(member.getId(), fee.getId(), from, to);
+                    if (paid < fee.getAmount()) {
+                        isUpToDate = false;
+                        break;
+                    }
+                }
+                if (isUpToDate) {
+                    membersUpToDate++;
+                }
+                if (member.getMembershipDate() != null &&
+                        !member.getMembershipDate().isBefore(from) &&
+                        !member.getMembershipDate().isAfter(to)) {
+                    newMembersCount++;
+                }
+            }
+
+            double percentage = members.isEmpty() ? 0 : (membersUpToDate * 100.0 / members.size());
+            CollectivityInformationDTO info = new CollectivityInformationDTO(collectivity.getNumber(), collectivity.getName());
+            result.add(new CollectivityOverallStatisticsDTO(info, newMembersCount, percentage));
+        }
+        return result;
+    }
+    // UNE SEULE méthode getPaidForMembershipFee (supprime l'autre)
+    private double getPaidForMembershipFee(String memberId, String feeId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
+                "WHERE member_id = ? AND membership_fee_id = ? AND creation_date BETWEEN ? AND ?";
+        try (Connection conn = databaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, memberId);
+            pstmt.setString(2, feeId);
+            pstmt.setDate(3, java.sql.Date.valueOf(from));
+            pstmt.setDate(4, java.sql.Date.valueOf(to));
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 }

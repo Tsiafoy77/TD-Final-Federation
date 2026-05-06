@@ -17,6 +17,12 @@ public class CollectivityController {
         this.collectivityService = collectivityService;
     }
 
+    // GET /collectivities
+    @GetMapping
+    public List<CollectivityDTO> getAllCollectivities() {
+        return collectivityService.getAllCollectivities();
+    }
+
     // A - POST /collectivities
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -25,7 +31,7 @@ public class CollectivityController {
     }
 
     // J - PUT /collectivities/{id}/identity
-    @PutMapping("/{id}/identity")
+    @PutMapping("/{id}/informations")
     public CollectivityDTO assignIdentity(
             @PathVariable String id,
             @RequestBody CollectivityIdentityDTO identity) {
@@ -70,4 +76,19 @@ public class CollectivityController {
             @RequestParam LocalDate at) {
         return collectivityService.getFinancialAccounts(id, at);
     }
+    @GetMapping("/{id}/statistics")
+    public List<CollectivityLocalStatisticsDTO> getMemberStatistics(
+            @PathVariable String id,
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return collectivityService.getMemberStatistics(id, from, to);
+    }
+
+    @GetMapping("/statistics")
+    public List<CollectivityOverallStatisticsDTO> getAllCollectivitiesStatistics(
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to) {
+        return collectivityService.getAllCollectivitiesStatistics(from, to);
+    }
+
 }

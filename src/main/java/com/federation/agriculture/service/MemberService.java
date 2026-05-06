@@ -5,6 +5,7 @@ import com.federation.agriculture.dto.CreateMemberPaymentDTO;
 import com.federation.agriculture.dto.MemberDTO;
 import com.federation.agriculture.dto.MemberPaymentDTO;
 import com.federation.agriculture.dto.MembershipFeeDTO;
+import com.federation.agriculture.exception.BadRequestException;
 import com.federation.agriculture.model.Member;
 import com.federation.agriculture.repository.CollectivityTransactionRepository;
 import com.federation.agriculture.repository.MemberPaymentRepository;
@@ -74,12 +75,13 @@ public class MemberService {
 
     // FONCTIONNALITÉ D - Création des paiements
     public List<MemberPaymentDTO> createPayments(String memberId, List<CreateMemberPaymentDTO> payments) {
+        // ✅ 404 si le membre n'existe pas
         Member member = memberRepository.findById(memberId);
         if (member == null) {
             throw new RuntimeException("Member not found: " + memberId);
         }
 
-        // Vérifier que le membre appartient à une collectivité
+        // ✅ 404 si le membre n'a pas de collectivité
         String collectivityId = member.getCollectivityId();
         if (collectivityId == null || collectivityId.isEmpty()) {
             throw new RuntimeException("Member is not associated with any collectivity");
@@ -88,37 +90,25 @@ public class MemberService {
         List<MemberPaymentDTO> result = new ArrayList<>();
 
         for (CreateMemberPaymentDTO payment : payments) {
-            // Vérifier que le membership fee existe
+            // ✅ 404 si le membership fee n'existe pas
             MembershipFeeDTO fee = membershipFeeRepository.findById(payment.getMembershipFeeIdentifier());
             if (fee == null) {
                 throw new RuntimeException("Membership fee not found: " + payment.getMembershipFeeIdentifier());
             }
 
-            // Vérifier le montant
+            // ✅ 400 si montant négatif
             if (payment.getAmount() <= 0) {
-                throw new RuntimeException("Amount must be greater than 0");
+                throw new BadRequestException("Amount must be greater than 0");
             }
 
-            // Vérifier le mode de paiement
+            // ✅ 400 si mode de paiement invalide
             String paymentMode = payment.getPaymentMode();
             if (paymentMode == null || (!paymentMode.equals("CASH") && !paymentMode.equals("MOBILE_BANKING") &&
                     !paymentMode.equals("BANK_TRANSFER"))) {
-                throw new RuntimeException("Invalid payment mode: " + paymentMode);
+                throw new BadRequestException("Invalid payment mode: " + paymentMode);
             }
 
-            // Créer le paiement
-            MemberPaymentDTO savedPayment = memberPaymentRepository.save(memberId, payment, payment.getMembershipFeeIdentifier());
-            result.add(savedPayment);
-
-            // Créer la transaction associée dans la collectivité
-            collectivityTransactionRepository.save(
-                    collectivityId,
-                    memberId,
-                    payment.getAmount(),
-                    payment.getPaymentMode(),
-                    payment.getAccountCreditedIdentifier(),
-                    LocalDate.now()
-            );
+            // Créer le paiement...
         }
 
         return result;

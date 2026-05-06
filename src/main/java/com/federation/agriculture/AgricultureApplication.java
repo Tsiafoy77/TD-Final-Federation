@@ -45,13 +45,13 @@ public class AgricultureApplication {
 	}
 
 	@Bean
-	public MemberPaymentRepository memberPaymentRepository() {
-		return new MemberPaymentRepository(databaseConfig(), financialAccountRepository());
+	public CollectivityTransactionRepository collectivityTransactionRepository() {
+		return new CollectivityTransactionRepository(databaseConfig(), memberRepository(), financialAccountRepository());
 	}
 
 	@Bean
-	public CollectivityTransactionRepository collectivityTransactionRepository() {
-		return new CollectivityTransactionRepository(databaseConfig(), memberRepository(), financialAccountRepository());
+	public MemberPaymentRepository memberPaymentRepository() {
+		return new MemberPaymentRepository(databaseConfig(), financialAccountRepository());
 	}
 
 	@Bean
@@ -64,7 +64,7 @@ public class AgricultureApplication {
 	public CollectivityService collectivityService() {
 		return new CollectivityService(collectivityRepository(), memberRepository(), databaseConfig(),
 				membershipFeeRepository(), collectivityTransactionRepository(),
-				financialAccountRepository());
+				financialAccountRepository(), memberPaymentRepository());
 	}
 
 	@Bean

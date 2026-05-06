@@ -2,6 +2,10 @@ package com.federation.agriculture.repository;
 
 import com.federation.agriculture.config.DatabaseConfig;
 import com.federation.agriculture.model.Collectivity;
+import com.federation.agriculture.model.Gender;
+import com.federation.agriculture.model.Member;
+import com.federation.agriculture.model.MemberOccupation;
+import com.federation.agriculture.dto.MembershipFeeDTO;
 import java.sql.*;
 import java.util.*;
 
@@ -153,24 +157,89 @@ public class CollectivityRepository {
         }
     }
 
+    // Méthode pour trouver les membres d'une collectivité
+    // Trouver les membres complets d'une collectivité
+    public List<Member> findMembersByCollectivityId(String collectivityId) {
+        String sql = "SELECT m.id, m.first_name, m.last_name, m.birth_date, m.gender, " +
+                "m.address, m.profession, m.phone_number, m.email, m.occupation, " +
+                "m.collectivity_id, m.registration_fee_paid, m.membership_dues_paid, m.membership_date " +
+                "FROM member m INNER JOIN collectivity_member cm ON m.id = cm.member_id " +
+                "WHERE cm.collectivity_id = ?";
+        List<Member> members = new ArrayList<>();
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, collectivityId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Member member = new Member();
+                member.setId(rs.getString("id"));
+                member.setFirstName(rs.getString("first_name"));
+                member.setLastName(rs.getString("last_name"));
+                java.sql.Date birthDateSql = rs.getDate("birth_date");
+                if (birthDateSql != null) {
+                    member.setBirthDate(birthDateSql.toLocalDate());
+                }
+                member.setGender(Gender.valueOf(rs.getString("gender")));
+                member.setAddress(rs.getString("address"));
+                member.setProfession(rs.getString("profession"));
+                member.setPhoneNumber(rs.getInt("phone_number"));
+                member.setEmail(rs.getString("email"));
+                member.setOccupation(MemberOccupation.valueOf(rs.getString("occupation")));
+                member.setCollectivityId(rs.getString("collectivity_id"));
+                member.setRegistrationFeePaid(rs.getBoolean("registration_fee_paid"));
+                member.setMembershipDuesPaid(rs.getBoolean("membership_dues_paid"));
+                java.sql.Date membershipDateSql = rs.getDate("membership_date");
+                if (membershipDateSql != null) {
+                    member.setMembershipDate(membershipDateSql.toLocalDate());
+                }
+                members.add(member);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return members;
+    }
+
     public List<String> findMemberIdsByCollectivityId(String collectivityId) {
         String sql = "SELECT member_id FROM collectivity_member WHERE collectivity_id = ?";
         List<String> memberIds = new ArrayList<>();
-
         try (Connection conn = dbConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
             pstmt.setString(1, collectivityId);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    memberIds.add(rs.getString("member_id"));
-                }
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                memberIds.add(rs.getString("member_id"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return memberIds;
+    }
+
+
+    // Méthode pour trouver les cotisations actives d'une collectivité
+    public List<MembershipFeeDTO> findActiveMembershipFeesByCollectivityId(String collectivityId) {
+        String sql = "SELECT id, eligible_from, frequency, amount, label, status " +
+                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE'";
+        List<MembershipFeeDTO> fees = new ArrayList<>();
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, collectivityId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                MembershipFeeDTO fee = new MembershipFeeDTO();
+                fee.setId(rs.getString("id"));
+                fee.setEligibleFrom(rs.getDate("eligible_from").toLocalDate());
+                fee.setFrequency(rs.getString("frequency"));
+                fee.setAmount(rs.getDouble("amount"));
+                fee.setLabel(rs.getString("label"));
+                fee.setStatus(rs.getString("status"));
+                fees.add(fee);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return fees;
     }
 
     private Collectivity mapResultSetToCollectivity(ResultSet rs) throws SQLException {
@@ -187,5 +256,40 @@ public class CollectivityRepository {
         collectivity.setSecretaryId(rs.getString("secretary_id"));
         collectivity.setCreatedAt(rs.getTimestamp("created_at"));
         return collectivity;
+    }
+
+    public List<Collectivity> findAll() {
+        String sql = "SELECT id, name, number, location, agricultural_specialty, federation_approval, " +
+                "president_id, vice_president_id, treasurer_id, secretary_id, created_at " +
+                "FROM collectivity";
+        List<Collectivity> collectivities = new ArrayList<>();
+
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                Collectivity collectivity = new Collectivity();
+                collectivity.setId(rs.getString("id"));
+                collectivity.setName(rs.getString("name"));
+                collectivity.setNumber(rs.getString("number"));
+                collectivity.setLocation(rs.getString("location"));
+                collectivity.setAgriculturalSpecialty(rs.getString("agricultural_specialty"));
+                collectivity.setFederationApproval(rs.getBoolean("federation_approval"));
+                collectivity.setPresidentId(rs.getString("president_id"));
+                collectivity.setVicePresidentId(rs.getString("vice_president_id"));
+                collectivity.setTreasurerId(rs.getString("treasurer_id"));
+                collectivity.setSecretaryId(rs.getString("secretary_id"));
+                collectivity.setCreatedAt(rs.getTimestamp("created_at"));
+
+                // Charger les IDs des membres
+                collectivity.setMembersIds(findMemberIdsByCollectivityId(collectivity.getId()));
+
+                collectivities.add(collectivity);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return collectivities;
     }
 }

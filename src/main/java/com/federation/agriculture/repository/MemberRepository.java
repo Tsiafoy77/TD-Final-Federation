@@ -32,7 +32,7 @@ public class MemberRepository {
             pstmt.setString(2, member.getFirstName());
             pstmt.setString(3, member.getLastName());
             pstmt.setDate(4, java.sql.Date.valueOf(member.getBirthDate()));
-            pstmt.setString(5, member.getGender().name());
+            pstmt.setObject(5, member.getGender().name(), java.sql.Types.OTHER);
             pstmt.setString(6, member.getAddress());
             pstmt.setString(7, member.getProfession());
             pstmt.setInt(8, member.getPhoneNumber());

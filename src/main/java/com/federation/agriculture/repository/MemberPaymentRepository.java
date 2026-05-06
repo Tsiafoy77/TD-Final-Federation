@@ -56,4 +56,23 @@ public class MemberPaymentRepository {
             return null;
         }
     }
+
+    // Ajouter cette méthode pour obtenir le total payé par un membre pour une période
+    public double getTotalPaidByMemberAndPeriod(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
+                "WHERE member_id = ? AND creation_date BETWEEN ? AND ?";
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, memberId);
+            pstmt.setDate(2, java.sql.Date.valueOf(from));
+            pstmt.setDate(3, java.sql.Date.valueOf(to));
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
