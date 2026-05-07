@@ -331,7 +331,6 @@ public class CollectivityService {
             double totalAssiduity = 0.0;
 
             for (Member member : members) {
-                // 1) Membres à jour (cotisation) – sans période
                 boolean isUpToDate = true;
                 for (MembershipFeeDTO fee : activeFees) {
                     double totalPaid = getTotalPaidForMemberForFee(member.getId(), fee.getId());
@@ -342,14 +341,12 @@ public class CollectivityService {
                 }
                 if (isUpToDate) membersUpToDate++;
 
-                // 2) Nouveaux membres – avec période
                 if (member.getMembershipDate() != null &&
                         !member.getMembershipDate().isBefore(from) &&
                         !member.getMembershipDate().isAfter(to)) {
                     newMembersCount++;
                 }
 
-                // 3) ✅ Assiduité (toujours avec période)
                 double assiduity = getAssiduityPercentageForMemberInPeriod(member.getId(), from, to);
                 totalAssiduity += assiduity;
             }
@@ -361,6 +358,10 @@ public class CollectivityService {
             result.add(new CollectivityOverallStatisticsDTO(info, newMembersCount, percentage, overallAssiduity));
         }
         return result;
+    }
+
+    private double getAssiduityPercentageForMemberInPeriod(String id, LocalDate from, LocalDate to) {
+        return 0;
     }
 
     // Nouvelle méthode utilitaire (sans restriction de date)
@@ -403,12 +404,14 @@ public class CollectivityService {
         }
         return 0;
     }
-    private double getAssiduityPercentageForMemberInPeriod(String memberId, LocalDate from, LocalDate to) {
-        String sql = "SELECT COUNT(*) as total, " +
-                "SUM(CASE WHEN a.attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
-                "FROM attendance a " +
-                "JOIN activity act ON a.activity_id = act.id " +
-                "WHERE a.member_id = ? AND act.executive_date BETWEEN ? AND ?";
+    public double getAssiduityPercentageForMember(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT " +
+                "  COUNT(*) as total, " +
+                "  SUM(CASE WHEN attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
+                "FROM attendance " +
+                "WHERE member_id = ? " +
+                "  AND activity_date BETWEEN ? AND ? " +
+                "  AND attendance_status IN ('ATTENDED', 'MISSING')";
 
         try (Connection conn = databaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -421,7 +424,9 @@ public class CollectivityService {
             if (rs.next()) {
                 int total = rs.getInt("total");
                 int attended = rs.getInt("attended");
-                if (total == 0) return 0.0; // ⚠️ aucun événement → assiduité 0
+                if (total == 0) {
+                    return 0.0;  // Aucune activité enregistrée pour ce membre
+                }
                 return attended * 100.0 / total;
             }
         } catch (SQLException e) {

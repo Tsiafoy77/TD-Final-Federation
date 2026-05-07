@@ -6,13 +6,12 @@ import com.federation.agriculture.dto.CreateActivityMemberAttendanceDTO;
 import com.federation.agriculture.dto.MemberDescriptionDTO;
 import com.federation.agriculture.model.Member;
 import java.sql.*;
-import java.sql.Date;
 import java.time.LocalDate;
 import java.util.*;
 
 public class AttendanceRepository {
 
-    private final DatabaseConfig dbConfig;
+    private final DatabaseConfig dbConfig;  // ← Ce champ doit exister
     private final MemberRepository memberRepository;
 
     public AttendanceRepository(DatabaseConfig dbConfig, MemberRepository memberRepository) {
@@ -89,29 +88,34 @@ public class AttendanceRepository {
     }
 
     public double getAssiduityPercentageForMember(String memberId, LocalDate from, LocalDate to) {
-        String sql = "SELECT COUNT(*) as total, " +
-                "SUM(CASE WHEN attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
-                "FROM attendance a " +
-                "JOIN activity act ON a.activity_id = act.id " +
-                "WHERE a.member_id = ? AND act.activity_date BETWEEN ? AND ?";
+        String sql = "SELECT " +
+                "  COUNT(*) as total, " +
+                "  SUM(CASE WHEN attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
+                "FROM attendance " +
+                "WHERE member_id = ? " +
+                "  AND activity_date BETWEEN ? AND ? " +
+                "  AND attendance_status IN ('ATTENDED', 'MISSING')";
 
         try (Connection conn = dbConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, memberId);
-            pstmt.setDate(2, Date.valueOf(from));
-            pstmt.setDate(3, Date.valueOf(to));
+            pstmt.setDate(2, java.sql.Date.valueOf(from));
+            pstmt.setDate(3, java.sql.Date.valueOf(to));
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
                 int total = rs.getInt("total");
                 int attended = rs.getInt("attended");
-                return total == 0 ? 100.0 : (attended * 100.0 / total);
+                if (total == 0) {
+                    return 0.0;
+                }
+                return attended * 100.0 / total;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return 100.0;
+        return 0.0;
     }
 
     public double getTotalPaidByMemberForFee(String memberId, String feeId) {
