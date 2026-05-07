@@ -1,9 +1,11 @@
 package com.federation.agriculture;
 
 import com.federation.agriculture.config.DatabaseConfig;
+import com.federation.agriculture.controller.ActivityController;
 import com.federation.agriculture.controller.CollectivityController;
 import com.federation.agriculture.controller.MemberController;
 import com.federation.agriculture.repository.*;
+import com.federation.agriculture.service.ActivityService;
 import com.federation.agriculture.service.CollectivityService;
 import com.federation.agriculture.service.MemberService;
 import org.springframework.boot.SpringApplication;
@@ -23,6 +25,7 @@ public class AgricultureApplication {
 	public DatabaseConfig databaseConfig() {
 		return new DatabaseConfig();
 	}
+
 
 	@Bean
 	public MemberRepository memberRepository() {
@@ -55,6 +58,16 @@ public class AgricultureApplication {
 	}
 
 	@Bean
+	public ActivityRepository activityRepository() {
+		return new ActivityRepository(databaseConfig());
+	}
+
+	@Bean
+	public AttendanceRepository attendanceRepository() {
+		return new AttendanceRepository(databaseConfig(), memberRepository());
+	}
+
+	@Bean
 	public MemberService memberService() {
 		return new MemberService(memberRepository(), memberPaymentRepository(),
 				collectivityTransactionRepository(), membershipFeeRepository());
@@ -68,6 +81,12 @@ public class AgricultureApplication {
 	}
 
 	@Bean
+	public ActivityService activityService() {
+		return new ActivityService(collectivityRepository(), activityRepository(), attendanceRepository());
+	}
+
+
+	@Bean
 	public MemberController memberController() {
 		return new MemberController(memberService());
 	}
@@ -75,5 +94,10 @@ public class AgricultureApplication {
 	@Bean
 	public CollectivityController collectivityController() {
 		return new CollectivityController(collectivityService());
+	}
+
+	@Bean
+	public ActivityController activityController() {
+		return new ActivityController(activityService());
 	}
 }

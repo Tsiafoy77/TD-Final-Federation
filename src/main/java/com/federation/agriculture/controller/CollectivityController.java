@@ -17,78 +17,54 @@ public class CollectivityController {
         this.collectivityService = collectivityService;
     }
 
-    // GET /collectivities
     @GetMapping
     public List<CollectivityDTO> getAllCollectivities() {
         return collectivityService.getAllCollectivities();
     }
 
-    // A - POST /collectivities
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public List<CollectivityDTO> createCollectivities(@RequestBody List<CreateCollectivityDTO> requestBody) {
         return collectivityService.createCollectivities(requestBody);
     }
 
-    // J - PUT /collectivities/{id}/identity
     @PutMapping("/{id}/informations")
-    public CollectivityDTO assignIdentity(
-            @PathVariable String id,
-            @RequestBody CollectivityIdentityDTO identity) {
+    public CollectivityDTO assignIdentity(@PathVariable String id, @RequestBody CollectivityIdentityDTO identity) {
         return collectivityService.assignIdentity(id, identity);
     }
 
-    // C - GET /collectivities/{id}/membershipFees
     @GetMapping("/{id}/membershipFees")
     public List<MembershipFeeDTO> getMembershipFees(@PathVariable String id) {
         return collectivityService.getMembershipFees(id);
     }
 
-    // C - POST /collectivities/{id}/membershipFees
     @PostMapping("/{id}/membershipFees")
-    public List<MembershipFeeDTO> createMembershipFees(
-            @PathVariable String id,
-            @RequestBody List<CreateMembershipFeeDTO> fees) {
+    public List<MembershipFeeDTO> createMembershipFees(@PathVariable String id, @RequestBody List<CreateMembershipFeeDTO> fees) {
         return collectivityService.createMembershipFees(id, fees);
     }
 
-
-    // FONCTIONNALITÉ D - Transactions des collectivités
-
     @GetMapping("/{id}/transactions")
-    public List<CollectivityTransactionDTO> getTransactions(
-            @PathVariable String id,
-            @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
+    public List<CollectivityTransactionDTO> getTransactions(@PathVariable String id, @RequestParam LocalDate from, @RequestParam LocalDate to) {
         return collectivityService.getTransactions(id, from, to);
     }
 
-    // GET /collectivities/{id}
     @GetMapping("/{id}")
     public CollectivityDTO getCollectivityById(@PathVariable String id) {
         return collectivityService.getCollectivityById(id);
     }
 
-    // GET /collectivities/{id}/financialAccounts
     @GetMapping("/{id}/financialAccounts")
-    public List<FinancialAccountDTO> getFinancialAccounts(
-            @PathVariable String id,
-            @RequestParam LocalDate at) {
+    public List<FinancialAccountDTO> getFinancialAccounts(@PathVariable String id, @RequestParam LocalDate at) {
         return collectivityService.getFinancialAccounts(id, at);
     }
+
     @GetMapping("/{id}/statistics")
-    public List<CollectivityLocalStatisticsDTO> getMemberStatistics(
-            @PathVariable String id,
-            @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
+    public List<CollectivityLocalStatisticsDTO> getMemberStatistics(@PathVariable String id, @RequestParam LocalDate from, @RequestParam LocalDate to) {
         return collectivityService.getMemberStatistics(id, from, to);
     }
 
     @GetMapping("/statistics")
-    public List<CollectivityOverallStatisticsDTO> getAllCollectivitiesStatistics(
-            @RequestParam LocalDate from,
-            @RequestParam LocalDate to) {
+    public List<CollectivityOverallStatisticsDTO> getAllCollectivitiesStatistics(@RequestParam LocalDate from, @RequestParam LocalDate to) {
         return collectivityService.getAllCollectivitiesStatistics(from, to);
     }
-
 }

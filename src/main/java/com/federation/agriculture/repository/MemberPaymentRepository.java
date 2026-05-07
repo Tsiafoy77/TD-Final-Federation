@@ -75,4 +75,24 @@ public class MemberPaymentRepository {
         }
         return 0;
     }
+
+    public double getTotalPaidByMemberForFee(String memberId, String feeId) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
+                "WHERE member_id = ? AND membership_fee_id = ?";
+
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, memberId);
+            pstmt.setString(2, feeId);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }

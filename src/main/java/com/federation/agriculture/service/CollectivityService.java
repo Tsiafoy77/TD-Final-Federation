@@ -330,10 +330,11 @@ public class CollectivityService {
             int newMembersCount = 0;
 
             for (Member member : members) {
+                // ✅ Pour savoir si le membre est à jour : on utilise TOUS les paiements (période large)
                 boolean isUpToDate = true;
                 for (MembershipFeeDTO fee : activeFees) {
-                    double paid = getPaidForMembershipFee(member.getId(), fee.getId(), from, to);
-                    if (paid < fee.getAmount()) {
+                    double totalPaid = getTotalPaidForMemberForFee(member.getId(), fee.getId());
+                    if (totalPaid < fee.getAmount()) {
                         isUpToDate = false;
                         break;
                     }
@@ -341,6 +342,8 @@ public class CollectivityService {
                 if (isUpToDate) {
                     membersUpToDate++;
                 }
+
+                // ✅ Pour les nouveaux membres : on utilise la période donnée
                 if (member.getMembershipDate() != null &&
                         !member.getMembershipDate().isBefore(from) &&
                         !member.getMembershipDate().isAfter(to)) {
@@ -354,17 +357,39 @@ public class CollectivityService {
         }
         return result;
     }
+
+    // Nouvelle méthode utilitaire (sans restriction de date)
+    private double getTotalPaidForMemberForFee(String memberId, String feeId) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
+                "WHERE member_id = ? AND membership_fee_id = ?";
+
+        try (Connection conn = databaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, memberId);
+            pstmt.setString(2, feeId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
     // UNE SEULE méthode getPaidForMembershipFee (supprime l'autre)
     private double getPaidForMembershipFee(String memberId, String feeId, LocalDate from, LocalDate to) {
         String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
                 "WHERE member_id = ? AND membership_fee_id = ? AND creation_date BETWEEN ? AND ?";
+
         try (Connection conn = databaseConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
             pstmt.setString(1, memberId);
             pstmt.setString(2, feeId);
             pstmt.setDate(3, java.sql.Date.valueOf(from));
             pstmt.setDate(4, java.sql.Date.valueOf(to));
             ResultSet rs = pstmt.executeQuery();
+
             if (rs.next()) {
                 return rs.getDouble(1);
             }

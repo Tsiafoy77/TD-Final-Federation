@@ -220,7 +220,9 @@ public class CollectivityRepository {
     // Méthode pour trouver les cotisations actives d'une collectivité
     public List<MembershipFeeDTO> findActiveMembershipFeesByCollectivityId(String collectivityId) {
         String sql = "SELECT id, eligible_from, frequency, amount, label, status " +
-                "FROM membership_fee WHERE collectivity_id = ? AND status = 'ACTIVE'";
+                "FROM membership_fee " +
+                "WHERE collectivity_id = ? AND status = 'ACTIVE' " +
+                "AND frequency IN ('ANNUALLY', 'MONTHLY', 'WEEKLY')";
         List<MembershipFeeDTO> fees = new ArrayList<>();
         try (Connection conn = dbConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
