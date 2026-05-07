@@ -5,11 +5,7 @@ import com.federation.agriculture.dto.*;
 import com.federation.agriculture.exception.BadRequestException;
 import com.federation.agriculture.model.Collectivity;
 import com.federation.agriculture.model.Member;
-import com.federation.agriculture.repository.CollectivityRepository;
-import com.federation.agriculture.repository.CollectivityTransactionRepository;
-import com.federation.agriculture.repository.MemberRepository;
-import com.federation.agriculture.repository.MembershipFeeRepository;
-import com.federation.agriculture.repository.MemberPaymentRepository;
+import com.federation.agriculture.repository.*;
 import com.federation.agriculture.dto.MembershipFeeDTO;
 import java.sql.Date;
 import java.util.ArrayList;
@@ -20,7 +16,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
-import com.federation.agriculture.repository.FinancialAccountRepository;
+
 import com.federation.agriculture.dto.CollectivityLocalStatisticsDTO;
 import com.federation.agriculture.dto.CollectivityOverallStatisticsDTO;
 import com.federation.agriculture.dto.CollectivityInformationDTO;
@@ -35,6 +31,7 @@ public class CollectivityService {
     private final CollectivityTransactionRepository collectivityTransactionRepository;
     private final FinancialAccountRepository financialAccountRepository;
     private final MemberPaymentRepository memberPaymentRepository;
+    private final AttendanceRepository attendanceRepository;
 
     public CollectivityService(CollectivityRepository collectivityRepository,
                                MemberRepository memberRepository,
@@ -42,7 +39,8 @@ public class CollectivityService {
                                MembershipFeeRepository membershipFeeRepository,
                                CollectivityTransactionRepository collectivityTransactionRepository,
                                FinancialAccountRepository financialAccountRepository,
-                               MemberPaymentRepository memberPaymentRepository) {
+                               MemberPaymentRepository memberPaymentRepository,
+                               AttendanceRepository attendanceRepository) {
         this.collectivityRepository = collectivityRepository;
         this.memberRepository = memberRepository;
         this.databaseConfig = databaseConfig;
@@ -50,6 +48,7 @@ public class CollectivityService {
         this.collectivityTransactionRepository = collectivityTransactionRepository;
         this.financialAccountRepository = financialAccountRepository;
         this.memberPaymentRepository = memberPaymentRepository;
+        this.attendanceRepository = attendanceRepository;
     }
 
     // FONCTIONNALITÉ A - Création d'une collectivité
@@ -302,11 +301,12 @@ public class CollectivityService {
                     }
                 }
             }
+            double assiduity = attendanceRepository.getAssiduityPercentageForMember(member.getId(), from, to);
             MemberDescriptionDTO memberDesc = new MemberDescriptionDTO(
                     member.getId(), member.getFirstName(), member.getLastName(),
                     member.getEmail(), member.getOccupation().name()
             );
-            result.add(new CollectivityLocalStatisticsDTO(memberDesc, totalPaid, totalUnpaid));
+            result.add(new CollectivityLocalStatisticsDTO(memberDesc, totalPaid, totalUnpaid, assiduity));
         }
         return result;
     }
@@ -328,9 +328,10 @@ public class CollectivityService {
 
             int membersUpToDate = 0;
             int newMembersCount = 0;
+            double totalAssiduity = 0.0;
 
             for (Member member : members) {
-                // ✅ Pour savoir si le membre est à jour : on utilise TOUS les paiements (période large)
+                // 1) Membres à jour (cotisation) – sans période
                 boolean isUpToDate = true;
                 for (MembershipFeeDTO fee : activeFees) {
                     double totalPaid = getTotalPaidForMemberForFee(member.getId(), fee.getId());
@@ -339,21 +340,25 @@ public class CollectivityService {
                         break;
                     }
                 }
-                if (isUpToDate) {
-                    membersUpToDate++;
-                }
+                if (isUpToDate) membersUpToDate++;
 
-                // ✅ Pour les nouveaux membres : on utilise la période donnée
+                // 2) Nouveaux membres – avec période
                 if (member.getMembershipDate() != null &&
                         !member.getMembershipDate().isBefore(from) &&
                         !member.getMembershipDate().isAfter(to)) {
                     newMembersCount++;
                 }
+
+                // 3) ✅ Assiduité (toujours avec période)
+                double assiduity = getAssiduityPercentageForMemberInPeriod(member.getId(), from, to);
+                totalAssiduity += assiduity;
             }
 
             double percentage = members.isEmpty() ? 0 : (membersUpToDate * 100.0 / members.size());
+            double overallAssiduity = members.isEmpty() ? 0 : (totalAssiduity / members.size());
+
             CollectivityInformationDTO info = new CollectivityInformationDTO(collectivity.getNumber(), collectivity.getName());
-            result.add(new CollectivityOverallStatisticsDTO(info, newMembersCount, percentage));
+            result.add(new CollectivityOverallStatisticsDTO(info, newMembersCount, percentage, overallAssiduity));
         }
         return result;
     }
@@ -397,5 +402,31 @@ public class CollectivityService {
             e.printStackTrace();
         }
         return 0;
+    }
+    private double getAssiduityPercentageForMemberInPeriod(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COUNT(*) as total, " +
+                "SUM(CASE WHEN a.attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
+                "FROM attendance a " +
+                "JOIN activity act ON a.activity_id = act.id " +
+                "WHERE a.member_id = ? AND act.executive_date BETWEEN ? AND ?";
+
+        try (Connection conn = databaseConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, memberId);
+            pstmt.setDate(2, java.sql.Date.valueOf(from));
+            pstmt.setDate(3, java.sql.Date.valueOf(to));
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                int total = rs.getInt("total");
+                int attended = rs.getInt("attended");
+                if (total == 0) return 0.0; // ⚠️ aucun événement → assiduité 0
+                return attended * 100.0 / total;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
     }
 }

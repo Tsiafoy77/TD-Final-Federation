@@ -77,7 +77,8 @@ public class AgricultureApplication {
 	public CollectivityService collectivityService() {
 		return new CollectivityService(collectivityRepository(), memberRepository(), databaseConfig(),
 				membershipFeeRepository(), collectivityTransactionRepository(),
-				financialAccountRepository(), memberPaymentRepository());
+				financialAccountRepository(), memberPaymentRepository(),
+				attendanceRepository());
 	}
 
 	@Bean

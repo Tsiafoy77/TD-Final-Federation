@@ -6,6 +6,8 @@ import com.federation.agriculture.dto.CreateActivityMemberAttendanceDTO;
 import com.federation.agriculture.dto.MemberDescriptionDTO;
 import com.federation.agriculture.model.Member;
 import java.sql.*;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.*;
 
 public class AttendanceRepository {
@@ -84,5 +86,47 @@ public class AttendanceRepository {
             e.printStackTrace();
         }
         return attendances;
+    }
+
+    public double getAssiduityPercentageForMember(String memberId, LocalDate from, LocalDate to) {
+        String sql = "SELECT COUNT(*) as total, " +
+                "SUM(CASE WHEN attendance_status = 'ATTENDED' THEN 1 ELSE 0 END) as attended " +
+                "FROM attendance a " +
+                "JOIN activity act ON a.activity_id = act.id " +
+                "WHERE a.member_id = ? AND act.activity_date BETWEEN ? AND ?";
+
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, memberId);
+            pstmt.setDate(2, Date.valueOf(from));
+            pstmt.setDate(3, Date.valueOf(to));
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                int total = rs.getInt("total");
+                int attended = rs.getInt("attended");
+                return total == 0 ? 100.0 : (attended * 100.0 / total);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 100.0;
+    }
+
+    public double getTotalPaidByMemberForFee(String memberId, String feeId) {
+        String sql = "SELECT COALESCE(SUM(amount), 0) FROM member_payment " +
+                "WHERE member_id = ? AND membership_fee_id = ?";
+
+        try (Connection conn = dbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, memberId);
+            pstmt.setString(2, feeId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) return rs.getDouble(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 }
